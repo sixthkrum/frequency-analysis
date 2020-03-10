@@ -108,13 +108,15 @@ int main(int argc , char* argv[])
   {
     while ( file.peek() != EOF)
     {
+      partial_symbol = 0;
       file.read( (char*)&partial_symbol , full_symbol_bytes );
       symbol = partial_symbol << leftover_bits;
+
+      partial_symbol = 0;
       file.read( (char*)&partial_symbol , 1 );
       carry_over_bits = partial_symbol & carry_over_bitmask;
       symbol = symbol + ( partial_symbol >> ( 8 - leftover_bits ) );
 
-      //std::cout << symbol << '\n';
       symbol_map [ symbol ] ++;
 
       if( file.eof() )
@@ -129,11 +131,11 @@ int main(int argc , char* argv[])
 
       else
       {
+        partial_symbol = 0;
         file.read( (char*)&partial_symbol , full_symbol_bytes );
         symbol = carry_over_bits + partial_symbol;
       }
 
-      //std::cout << symbol << '\n';
       symbol_map [ symbol ] ++;
     }
   }
