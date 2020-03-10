@@ -3,6 +3,8 @@
 #include <math.h>
 #include <limits.h>
 #include <cstring>
+#include <map>
+#include <iterator>
 
 unsigned int cstring_to_int ( char* s , bool check_only )
 {
@@ -71,20 +73,7 @@ int main(int argc , char* argv[])
   unsigned int symbol_bits;
   symbol_bits = cstring_to_int ( argv[2] , 0 );
 
-  unsigned int size_of_symbol_map;
-  size_of_symbol_map = pow ( 2 , symbol_bits );
-  std::cout << "size of symbol map " << size_of_symbol_map << '\n';
-
-  if ( size_of_symbol_map == UINT_MAX )
-  {
-    std::cout << "only first " << UINT_MAX + 1 << " combinations considered, too many symbols\n";
-  }
-
-  unsigned int* symbol_map = new unsigned int [ size_of_symbol_map ];
-  for( int i = 0 ; i < size_of_symbol_map ; i++ )
-  {
-    symbol_map[i] = 0;
-  }
+  std::map < unsigned int , unsigned int > symbol_map;
 
   unsigned int leftover_bits = symbol_bits % 8;
   unsigned int full_symbol_bytes = symbol_bits / 8;
@@ -117,7 +106,15 @@ int main(int argc , char* argv[])
       carry_over_bits = partial_symbol & carry_over_bitmask;
       symbol = symbol + ( partial_symbol >> ( 8 - leftover_bits ) );
 
-      symbol_map [ symbol ] ++;
+      try
+      {
+        symbol_map [ symbol ] ++;
+      }
+
+      catch ( std::out_of_range )
+      {
+        symbol_map.insert ( std::pair < unsigned int , unsigned int > ( symbol , 1 ) );
+      }
 
       if( file.eof() )
       {
@@ -136,7 +133,16 @@ int main(int argc , char* argv[])
         symbol = carry_over_bits + partial_symbol;
       }
 
-      symbol_map [ symbol ] ++;
+      try
+      {
+        symbol_map [ symbol ] ++;
+      }
+
+      catch ( std::out_of_range )
+      {
+        symbol_map.insert( std::pair < unsigned int , unsigned int > ( symbol , 1 ) );
+      }
+
     }
   }
 
@@ -145,12 +151,11 @@ int main(int argc , char* argv[])
     //need to do this
   }
 
-  for ( unsigned int i = 0 ; i < size_of_symbol_map ; i ++ )
+  std::map < unsigned int , unsigned int > :: iterator p;
+
+  for ( p = symbol_map.begin() ; p != symbol_map.end() ; p ++ )
   {
-    if ( symbol_map[i] > 0 )
-    {
-      std::cout << symbol_map[i] << '\t' << i << '\t' << char(i) << '\n';
-    }
+    std::cout << p -> first << '\t' << p -> second << '\n';
   }
 
   return 1;
