@@ -1,4 +1,4 @@
-ONGOING ONLY OUTPUTS FREQUENCIES FOR SYMBOL BIT SIZE >=8
+ONGOING ONLY OUTPUTS FREQUENCIES FOR ALL BIT SIZES
 
 analyses the frequency of symbols in a file and compares them to the frequency of alphabets in the english language
 
