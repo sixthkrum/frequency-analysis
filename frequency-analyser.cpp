@@ -3,38 +3,43 @@
 #include <math.h>
 #include <limits.h>
 #include <cstring>
-#include <map>
+#include <unordered_map>
 #include <iterator>
 
-unsigned int cstring_to_int ( char* s , bool check_only )
+unsigned int cstring_to_int ( char* s , bool check)
 {
   unsigned int temp = 0;
   unsigned int num = 0;
-  unsigned int len = strlen(s);
+  unsigned int len = strlen ( s );
 
-  for ( int i = 0 ; s[i] != '\0' ; i++)
+  if ( check )
+  {
+    for ( int i = 0 ; s[i] != '\0' ; i++)
+    {
+      temp = int(s[i] - '0');
+
+      if( temp < 0 || temp > 9 )
+      {
+        throw 0;
+      }
+
+    }
+  }
+
+  for ( int i = 0 ; s[i] != '\0' ; i ++ )
   {
     temp = int(s[i] - '0');
-    if( temp < 0 || temp > 9 )
-    {
-      throw 0;
-    }
-
     num = temp * pow ( 10 , len - i - 1 ) + num;
   }
 
-  if ( check_only == 1 )
-  {
-    return 1;
-  }
-
   return num;
+
 }
 
 inline unsigned int carry_over_bitmask ( int leftover_bits )
 {
   unsigned int temp = 0;
-  for ( int i = 0 ; i < leftover_bits ; i ++)
+  for ( int i = 0 ; i < leftover_bits ; i ++ )
   {
     temp = pow ( 2 , i ) + temp;
   }
@@ -42,14 +47,14 @@ inline unsigned int carry_over_bitmask ( int leftover_bits )
   return temp;
 }
 
-int main(int argc , char* argv[])
+int main( int argc , char* argv[] )
 {
-  switch (argc)
+  switch ( argc )
   {
     case 3:
     {
       std::fstream file;
-      file.open( argv[1] , std::ios::in );
+      file.open( argv [1] , std::ios::in );
       if ( file.peek() == EOF )
       {
         std::cout << "file is empty or does not exist\n";
@@ -58,12 +63,12 @@ int main(int argc , char* argv[])
 
       try
       {
-        cstring_to_int ( argv[2] , 1 );
+        cstring_to_int ( argv [2] , 1 );
       }
 
       catch (...)
       {
-        std::cout << "second argument is not an integer\n";
+        std::cout << "second argument is not a positive non-zero integer\n";
 
         return -1;
       }
@@ -82,9 +87,17 @@ int main(int argc , char* argv[])
   //std::cout << "starting\n";
 
   unsigned int symbol_bits;
-  symbol_bits = cstring_to_int ( argv[2] , 0 );
+  symbol_bits = cstring_to_int ( argv [2] , 0 );
 
-  std::map < unsigned int , unsigned int > symbol_map;
+  if ( symbol_bits == 0 )
+  {
+    std::cout << "second argument is not a positive non-zero integer\n";
+
+    return -1;
+
+  }
+
+  std::unordered_map < unsigned int , unsigned int > symbol_map;
 
   int leftover_bits = symbol_bits % 8;
   unsigned int full_symbol_bytes = symbol_bits / 8;
@@ -270,11 +283,11 @@ int main(int argc , char* argv[])
 
   }
 
-  std::map < unsigned int , unsigned int > :: iterator p;
+  std::unordered_map < unsigned int , unsigned int > :: iterator i;
 
-  for ( p = symbol_map.begin() ; p != symbol_map.end() ; p ++ )
+  for ( i = symbol_map.begin() ; i != symbol_map.end() ; i ++ )
   {
-    std::cout << p -> first << '\t' << p -> second << '\n';
+    std::cout << char ( i -> first ) << '\t' << i -> second << '\n';
   }
 
   file.close();
