@@ -6,8 +6,12 @@
 #include <unordered_map>
 #include <iterator>
 #include <regex>
+#include <vector>
+#include <array>
 
-unsigned int cstring_to_int ( char* s , bool check)
+#include <stdio.h>
+
+unsigned int cstring_to_int ( char* s , bool check = 0 )
 {
   unsigned int temp = 0;
   unsigned int num = 0;
@@ -102,10 +106,9 @@ int main( int argc , char* argv[] )
         return -1;
       }
 
-      std::regex reg ( "(?:\\d+\\s\\d+\\s\\d+\\s\\d+\\s*|)*" );
-      std::cmatch res;
+      std::regex reg ( "(?:\\d+\\s\\d+\\s\\d+\\s\\d+\\s)*" );
 
-      if ( ! std::regex_match ( argv [3] , res , reg ) )
+      if ( ! std::regex_match ( argv [3] , reg ) )
       {
         std::cout << "third argument is not well formed\n";
 
@@ -116,7 +119,7 @@ int main( int argc , char* argv[] )
 
     default:
     {
-      std::cout << "first argument: filename\n" << "second argument: no. of bits per symbol\n" << "third argument: (leave empty if none) list of symbols to map to other symbols and be treated the same as them\n" << "format: 'starting decimal value to map from' 'ending decimal value to map from' 'starting decimal value to map to' 'ending decimal value to map to' enclosed in '' seperate multiple by whitespace ranges should be the same\n";
+      std::cout << "first argument: filename\n" << "second argument: no. of bits per symbol\n" << "third argument: (leave empty if none) list of symbols to map to other symbols and be treated the same as them\n" << "format: ''starting decimal value to map from' 'ending decimal value to map from' 'starting decimal value to map to' 'ending decimal value to map to' ' seperate multiple ranges by whitespace ranges should be the same\n";
 
       return -1;
     } break;
@@ -144,182 +147,221 @@ int main( int argc , char* argv[] )
   unsigned int symbol = 0;
   unsigned int carry_over_bits = 0;
   bool early_eof = 0;
-  bool mod8_flag = [ leftover_bits ]() -> bool {
-    if( leftover_bits == 0)
-    {
-      return 1;
-    }
-
-    return 0;
-
-  } ();
+  bool mod8_flag = ! bool ( leftover_bits );
 
   std::fstream file;
   file.open( argv[1] , std::ios::in | std::ios::binary );
 
-  if ( mod8_flag && symbol_bits >= 8)
+  if ( argc == 4 )
   {
-    while ( file.peek() != EOF)
+    std::unordered_map < unsigned int , unsigned int > cross_map;
+
+    std::vector < std::array < int , 4 > > map_range;
+    std::array < int , 4 > range_temp;
+
+    unsigned int arg_len = strlen ( argv [3] );
+    unsigned int temp;
+
+    char *num_temp;
+
+    while ( arg_len > 0 )
     {
-      symbol = 0;
-      for ( int i = 0 ; i < full_symbol_bytes ; i ++ )
+      for ( int i = 0 ; i < 4 ; i ++ )
       {
-        partial_symbol = 0;
-        file.read( (char*)&partial_symbol , 1 );
-        symbol = symbol +  ( partial_symbol << ( ( full_symbol_bytes - i - 1 ) * 8 ) );
+        temp = strcspn ( argv [3] , " " );
+        num_temp = new char [ temp + 1 ];
+        strncpy ( num_temp , argv [3] , temp );
+        num_temp [ temp ] = '\0';
 
-        if( file.peek() == EOF )
-        {
-          symbol = symbol >> ( ( full_symbol_bytes - i - 1 ) * 8 );
-          break;
-        }
+        range_temp [i] = cstring_to_int ( num_temp );
+
+        arg_len -= temp + 1;
+        argv [3] += temp + 1;
+        delete [] num_temp;
       }
 
-      try
-      {
-        symbol_map [ symbol ] ++;
-      }
-
-      catch ( std::out_of_range )
-      {
-        symbol_map.insert ( std::pair < unsigned int , unsigned int > ( symbol , 1 ) );
-      }
-    }
-  }
-
-  else if ( !mod8_flag && symbol_bits > 8 )
-  {
-    while ( file.peek() != EOF)
-    {
-      symbol = 0;
-      for ( int i = 0 ; i < full_symbol_bytes ; i ++ )
-      {
-        partial_symbol = 0;
-        file.read( (char*)&partial_symbol , 1 );
-        symbol = symbol +  ( partial_symbol << ( ( full_symbol_bytes - i - 1 ) * 8 ) );
-
-        if( file.peek() == EOF )
-        {
-          symbol = symbol >> ( ( full_symbol_bytes - i - 1 ) * 8 );
-          break;
-        }
-      }
-
-      symbol = ( carry_over_bits << ( 8 * full_symbol_bytes ) ) + symbol;
-
-      if ( leftover_bits > 0 && file.peek() != EOF )
-      {
-        partial_symbol = 0;
-        file.read( (char*)&partial_symbol , 1 );
-        symbol = ( symbol << leftover_bits ) + ( partial_symbol >> ( 8 - leftover_bits ) );
-        carry_over_bits = partial_symbol & carry_over_bitmask (  8 - leftover_bits );
-        leftover_bits = symbol_bits - ( 8 - leftover_bits ) - ( 8 * full_symbol_bytes );
-      }
-
-      else if ( leftover_bits <= 0 )
-      {
-        symbol =  ( symbol >> ( - leftover_bits ) );
-        carry_over_bits = partial_symbol & carry_over_bitmask (  - leftover_bits );
-        leftover_bits = symbol_bits + leftover_bits - ( 8 * full_symbol_bytes );
-      }
-
-      else
-      {
-        early_eof = 1;
-      }
-
-      try
-      {
-        symbol_map [ symbol ] ++;
-      }
-
-      catch ( std::out_of_range )
-      {
-        symbol_map.insert ( std::pair < unsigned int , unsigned int > ( symbol , 1 ) );
-      }
+      map_range.push_back ( range_temp );
 
     }
 
-    if ( ! early_eof )
+    while ( !map_range.empty() )
     {
-      symbol = carry_over_bits;
-
-      try
-      {
-        symbol_map [ symbol ] ++;
-      }
-
-      catch ( std::out_of_range )
-      {
-        symbol_map.insert ( std::pair < unsigned int , unsigned int > ( symbol , 1 ) );
-      }
-
+      for(int i = 0 ; i < 4 ; i ++)
+      std::cout << map_range.back() [i] << ' ';
+      map_range.pop_back();
+      std::cout << '\n';
     }
+
+    return 1;
 
   }
 
   else
   {
-    leftover_bits = 8;
-    file.read( (char*)&partial_symbol , 1 );
-    while ( ! early_eof )
+    if ( mod8_flag && symbol_bits >= 8)
     {
-      if ( int(leftover_bits) - int(symbol_bits) >= 0 )
+      while ( file.peek() != EOF)
       {
-        symbol = partial_symbol >> ( leftover_bits - symbol_bits );
-        partial_symbol = partial_symbol & carry_over_bitmask ( leftover_bits - symbol_bits );
-        leftover_bits = leftover_bits - symbol_bits;
-        if ( leftover_bits == 0)
+        symbol = 0;
+        for ( int i = 0 ; i < full_symbol_bytes ; i ++ )
         {
-          leftover_bits = 8;
           partial_symbol = 0;
-          if ( file.peek() != EOF )
+          file.read( (char*)&partial_symbol , 1 );
+          symbol = symbol +  ( partial_symbol << ( ( full_symbol_bytes - i - 1 ) * 8 ) );
+
+          if( file.peek() == EOF )
           {
+            symbol = symbol >> ( ( full_symbol_bytes - i - 1 ) * 8 );
+            break;
+          }
+        }
+
+        try
+        {
+          symbol_map [ symbol ] ++;
+        }
+
+        catch ( std::out_of_range )
+        {
+          symbol_map.insert ( std::pair < unsigned int , unsigned int > ( symbol , 1 ) );
+        }
+      }
+    }
+
+    else if ( !mod8_flag && symbol_bits > 8 )
+    {
+      while ( file.peek() != EOF)
+      {
+        symbol = 0;
+        for ( int i = 0 ; i < full_symbol_bytes ; i ++ )
+        {
+          partial_symbol = 0;
+          file.read( (char*)&partial_symbol , 1 );
+          symbol = symbol +  ( partial_symbol << ( ( full_symbol_bytes - i - 1 ) * 8 ) );
+
+          if( file.peek() == EOF )
+          {
+            symbol = symbol >> ( ( full_symbol_bytes - i - 1 ) * 8 );
+            break;
+          }
+        }
+
+        symbol = ( carry_over_bits << ( 8 * full_symbol_bytes ) ) + symbol;
+
+        if ( leftover_bits > 0 && file.peek() != EOF )
+        {
+          partial_symbol = 0;
+          file.read( (char*)&partial_symbol , 1 );
+          symbol = ( symbol << leftover_bits ) + ( partial_symbol >> ( 8 - leftover_bits ) );
+          carry_over_bits = partial_symbol & carry_over_bitmask (  8 - leftover_bits );
+          leftover_bits = symbol_bits - ( 8 - leftover_bits ) - ( 8 * full_symbol_bytes );
+        }
+
+        else if ( leftover_bits <= 0 )
+        {
+          symbol =  ( symbol >> ( - leftover_bits ) );
+          carry_over_bits = partial_symbol & carry_over_bitmask (  - leftover_bits );
+          leftover_bits = symbol_bits + leftover_bits - ( 8 * full_symbol_bytes );
+        }
+
+        else
+        {
+          early_eof = 1;
+        }
+
+        try
+        {
+          symbol_map [ symbol ] ++;
+        }
+
+        catch ( std::out_of_range )
+        {
+          symbol_map.insert ( std::pair < unsigned int , unsigned int > ( symbol , 1 ) );
+        }
+
+      }
+
+      if ( ! early_eof )
+      {
+        symbol = carry_over_bits;
+
+        try
+        {
+          symbol_map [ symbol ] ++;
+        }
+
+        catch ( std::out_of_range )
+        {
+          symbol_map.insert ( std::pair < unsigned int , unsigned int > ( symbol , 1 ) );
+        }
+
+      }
+
+    }
+
+    else
+    {
+      leftover_bits = 8;
+      file.read( (char*)&partial_symbol , 1 );
+      while ( ! early_eof )
+      {
+        if ( int(leftover_bits) - int(symbol_bits) >= 0 )
+        {
+          symbol = partial_symbol >> ( leftover_bits - symbol_bits );
+          partial_symbol = partial_symbol & carry_over_bitmask ( leftover_bits - symbol_bits );
+          leftover_bits = leftover_bits - symbol_bits;
+          if ( leftover_bits == 0)
+          {
+            leftover_bits = 8;
+            partial_symbol = 0;
+            if ( file.peek() != EOF )
+            {
+              file.read( (char*)&partial_symbol , 1 );
+            }
+
+            else
+            {
+              early_eof = 1;
+            }
+
+          }
+
+        }
+
+        else
+        {
+          carry_over_bits = partial_symbol;
+          if( file.peek() != EOF)
+          {
+            symbol = ( carry_over_bits << ( - ( leftover_bits - symbol_bits ) ) );
+            partial_symbol = 0;
             file.read( (char*)&partial_symbol , 1 );
+            leftover_bits = 8 + ( leftover_bits - symbol_bits );
+            symbol = symbol + ( partial_symbol >> ( leftover_bits ) );
+            partial_symbol = partial_symbol & carry_over_bitmask ( leftover_bits );
           }
 
           else
           {
+            symbol = carry_over_bits;
             early_eof = 1;
           }
 
         }
 
-      }
-
-      else
-      {
-        carry_over_bits = partial_symbol;
-        if( file.peek() != EOF)
+        try
         {
-          symbol = ( carry_over_bits << ( - ( leftover_bits - symbol_bits ) ) );
-          partial_symbol = 0;
-          file.read( (char*)&partial_symbol , 1 );
-          leftover_bits = 8 + ( leftover_bits - symbol_bits );
-          symbol = symbol + ( partial_symbol >> ( leftover_bits ) );
-          partial_symbol = partial_symbol & carry_over_bitmask ( leftover_bits );
+          symbol_map [ symbol ] ++;
         }
 
-        else
+        catch ( std::out_of_range )
         {
-          symbol = carry_over_bits;
-          early_eof = 1;
+          symbol_map.insert ( std::pair < unsigned int , unsigned int > ( symbol , 1 ) );
         }
 
-      }
-
-      try
-      {
-        symbol_map [ symbol ] ++;
-      }
-
-      catch ( std::out_of_range )
-      {
-        symbol_map.insert ( std::pair < unsigned int , unsigned int > ( symbol , 1 ) );
       }
 
     }
-
   }
 
   std::unordered_map < unsigned int , unsigned int > :: iterator i;
