@@ -5,6 +5,7 @@
 #include <cstring>
 #include <unordered_map>
 #include <iterator>
+#include <regex>
 
 unsigned int cstring_to_int ( char* s , bool check)
 {
@@ -55,9 +56,11 @@ int main( int argc , char* argv[] )
     {
       std::fstream file;
       file.open( argv [1] , std::ios::in );
+
       if ( file.peek() == EOF )
       {
         std::cout << "file is empty or does not exist\n";
+
         return -1;
       }
 
@@ -75,9 +78,45 @@ int main( int argc , char* argv[] )
 
     } break;
 
+    case 4:
+    {
+      std::fstream file;
+      file.open( argv [1] , std::ios::in );
+
+      if ( file.peek() == EOF )
+      {
+        std::cout << "file is empty or does not exist\n";
+
+        return -1;
+      }
+
+      try
+      {
+        cstring_to_int ( argv [2] , 1 );
+      }
+
+      catch (...)
+      {
+        std::cout << "second argument is not a positive non-zero integer\n";
+
+        return -1;
+      }
+
+      std::regex reg ( "(?:\\d+\\s\\d+\\s\\d+\\s\\d+\\s*|)*" );
+      std::cmatch res;
+
+      if ( ! std::regex_match ( argv [3] , res , reg ) )
+      {
+        std::cout << "third argument is not well formed\n";
+
+        return -1;
+      }
+
+    } break;
+
     default:
     {
-      std::cout << "first argument: filename\n" << "second argument: no. of bits per symbol\n";
+      std::cout << "first argument: filename\n" << "second argument: no. of bits per symbol\n" << "third argument: (leave empty if none) list of symbols to map to other symbols and be treated the same as them\n" << "format: 'starting decimal value to map from' 'ending decimal value to map from' 'starting decimal value to map to' 'ending decimal value to map to' enclosed in '' seperate multiple by whitespace ranges should be the same\n";
 
       return -1;
     } break;
