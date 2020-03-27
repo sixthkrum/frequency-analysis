@@ -117,7 +117,7 @@ int main( int argc , char* argv[] )
 
     default:
     {
-      std::cout << "first argument: filename\n" << "second argument: no. of bits per symbol\n" << "third argument: (leave empty if none) list of symbols to map to other symbols and be treated the same as them\n" << "format: ''starting decimal value to map from' 'ending decimal value to map from' 'starting decimal value to map to' 'ending decimal value to map to' ' seperate multiple ranges by whitespace\nranges should be the same\nto map an ascending range to a descending range enter the last index first in the mapping to part\n";
+      std::cout << "first argument: filename\n" << "second argument: no. of bits per symbol\n" << "third argument: (leave empty if none) list of symbols to map to other symbols and be treated the same as them\n" << "format: ''starting decimal value to map from' 'ending decimal value to map from' 'starting decimal value to map to' 'ending decimal value to map to' ' seperate multiple ranges by whitespace\nranges should be the same\nto map an ascending range to a descending range enter the last index first in the mapping to part\nto map a range to a single index enter the same numbers in the mapping to part ex: '10 65 97 97 '\n";
 
       return -1;
     } break;
@@ -188,7 +188,7 @@ int main( int argc , char* argv[] )
     {
       range_temp = map_range.back();
 
-      if ( range_temp [1] - range_temp [0] == range_temp [3] - range_temp [2] )
+      if ( range_temp [1] - range_temp [0] == range_temp [3] - range_temp [2] && range_temp [1] >= range_temp [0])
       {
         unsigned int range = range_temp [1] - range_temp [0];
         unsigned int f_temp = range_temp [0];
@@ -201,7 +201,7 @@ int main( int argc , char* argv[] )
 
       }
 
-      else if ( range_temp [1] - range_temp [0] == - range_temp [3] + range_temp [2] && range_temp [1] > range_temp [0] )
+      else if ( range_temp [1] - range_temp [0] == - range_temp [3] + range_temp [2] && range_temp [1] >= range_temp [0] )
       {
         unsigned int range = range_temp [1] - range_temp [0];
         unsigned int f_temp = range_temp [0];
@@ -214,10 +214,23 @@ int main( int argc , char* argv[] )
 
       }
 
+      else if ( range_temp [3] == range_temp [2] && range_temp [1] > range_temp [0] )
+      {
+        unsigned int range = range_temp [1] - range_temp [0];
+        unsigned int f_temp = range_temp [0];
+        unsigned int b_temp = range_temp [3];
+
+        for ( int i = 0 ; i <= range ; i ++ )
+        {
+          cross_map.insert ( std::pair < unsigned int , unsigned int > ( i + f_temp , b_temp ) );
+        }
+      }
+
       else
       {
         std::cout << "recheck range no. " << range_num << " it is not in the right format\n";
-        return 1;
+
+        return -1;
       }
 
       map_range.pop_back();
@@ -524,14 +537,22 @@ int main( int argc , char* argv[] )
     }
   }
 
+  std::fstream outfile;
+  std::string outfile_name = argv [1];
+  outfile_name = outfile_name + "-results.txt";
+  outfile.open ( outfile_name , std::ios::out );
+
   std::unordered_map < unsigned int , unsigned int > :: iterator i;
 
   for ( i = symbol_map.begin() ; i != symbol_map.end() ; i ++ )
   {
-    std::cout << char ( i -> first ) << '\t' << i -> second << '\n';
+    outfile << char ( i -> first ) << '\t' << i -> first << '\t' << i -> second << '\n';
   }
 
+  outfile.close();
   file.close();
+
+  std::cout << "done! saved to " << outfile_name << '\n';
 
   return 1;
 }
