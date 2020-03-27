@@ -9,7 +9,7 @@
 #include <vector>
 #include <array>
 
-unsigned int cstring_to_int ( char* s , bool check = 0 )
+unsigned int cstring_to_int ( const char* s , bool check = 0 )
 {
   unsigned int temp = 0;
   unsigned int num = 0;
@@ -17,7 +17,7 @@ unsigned int cstring_to_int ( char* s , bool check = 0 )
 
   if ( check )
   {
-    for ( int i = 0 ; s[i] != '\0' ; i++)
+    for ( unsigned int i = 0 ; s[i] != '\0' ; i++)
     {
       temp = int(s[i] - '0');
 
@@ -33,6 +33,63 @@ unsigned int cstring_to_int ( char* s , bool check = 0 )
   {
     temp = int(s[i] - '0');
     num = temp * pow ( 10 , len - i - 1 ) + num;
+  }
+
+  return num;
+
+}
+
+double cstring_to_double ( const char* s , bool check = 0 )
+{
+  double temp = 0;
+  double num = 0;
+  unsigned int len = strlen ( s );
+  bool decimal_encountered = 0;
+
+  if ( check )
+  {
+    for ( int i = 0 ; s[i] != '\0' ; i++)
+    {
+      temp = int(s[i] - '0');
+      if( ( temp < 0 && temp != -2 ) || temp > 9 || ( temp == -2 && decimal_encountered == 1 ) )
+      {
+        throw 0;
+      }
+
+      if ( temp == -2 )
+      {
+        decimal_encountered = 1;
+      }
+    }
+  }
+
+  decimal_encountered = 0;
+
+  int nums_before_decimal = strcspn ( s , "." );
+  int offset_before_decimal = nums_before_decimal - 1;
+  int offset_after_decimal = nums_before_decimal;
+
+  for ( int i = 0 ; s[i] != '\0' ; i ++ )
+  {
+    temp = int(s[i] - '0');
+
+    if ( temp == -2 )
+    {
+      i ++;
+      temp = int(s[i] - '0');
+      decimal_encountered = 1;
+    }
+
+    if ( !decimal_encountered )
+    {
+      num = temp * pow ( 10 , offset_before_decimal - i ) + num;
+    }
+
+    else
+    {
+      num = temp * pow ( 10 , offset_after_decimal - i ) + num;
+    }
+
   }
 
   return num;
@@ -553,6 +610,101 @@ int main( int argc , char* argv[] )
   file.close();
 
   std::cout << "done! saved to " << outfile_name << '\n';
+
+  std::cout << "compare to frequency table? enter y to continue, anything otherwise\n";
+  std::string option_temp;
+  std::cin >> option_temp;
+
+  if ( option_temp == "y")
+  {
+    std::cout << "enter name of file...\n";
+    std::string frequency_table_name;
+    std::cin >> frequency_table_name;
+
+    std::fstream frequency_table;
+    frequency_table.open ( frequency_table_name , std::ios::in );
+
+    if ( frequency_table.peek() == EOF )
+    {
+      std::cout << "file is empty or does not exist\n";
+
+      return -1;
+    }
+
+    /*checking if frequency table is valid*/
+
+    std::string h;
+    unsigned int temp;
+    double temp_d;
+    double temp_d_last = 101; // number greater than 100 for first check
+    double frequency_total = 0;
+    unsigned int entry = 0;
+    std::unordered_map < unsigned int , bool > dummy_check;
+
+    while ( frequency_table >> h )
+    {
+      entry ++;
+
+      try
+      {
+        temp = cstring_to_int ( h.c_str() , 1 );
+
+        if ( dummy_check [ temp ] == 0 )
+        {
+          dummy_check [ temp ] = 1;
+        }
+
+        else
+        {
+          std::cout << '\n' << "invalid table: dummy at entry no. " << entry << std::endl;
+
+          return -1;
+        }
+
+      }
+
+      catch (...)
+      {
+        std::cout << '\n' << "invalid table check entry no. " << entry << std::endl;
+
+        return -1;
+      }
+
+      frequency_table >> h;
+
+      try
+      {
+        temp_d = cstring_to_double ( h.c_str() , 1 );
+
+        if ( temp_d > temp_d_last )
+        {
+          std::cout << '\n' << "invalid table: not in descending order, check entry no. " << entry << std::endl;
+
+          return -1;
+        }
+
+        temp_d_last = temp_d;
+
+        frequency_total += temp_d;
+      }
+
+      catch (...)
+      {
+        std::cout << '\n' << "invalid table check entry no. " << entry << std::endl;
+
+        return -1;
+      }
+
+    }
+
+    if ( frequency_total > 100 )
+    {
+      std::cout << '\n' << "invalid table: frequency total is greater than 100, " << frequency_total << std::endl;
+
+      return -1;
+    }
+
+  }
 
   return 1;
 }
